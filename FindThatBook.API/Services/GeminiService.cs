@@ -82,7 +82,7 @@ public class GeminiService(HttpClient httpClient, IConfiguration configuration, 
             generationConfig = new
             {
                 responseMimeType = "application/json",
-                temperature = 0.1
+                temperature = 0.1 // almost fully deterministic ... don't be too loose here!
             }
         };
 

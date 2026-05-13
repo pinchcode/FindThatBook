@@ -12,12 +12,12 @@ public class BookSearchService(
     private const int MaxCandidates = 5;
 
     // Scoring tiers (higher = stronger match)
-    private const int ScoreExactTitlePrimaryAuthor = 100; 
-    private const int ScoreExactTitleContributorAuthor = 80; 
-    private const int ScoreNearTitlePrimaryAuthor = 70; 
-    private const int ScoreNearTitleContributorAuthor = 55; 
-    private const int ScoreTitleOnly = 50; 
-    private const int ScoreAuthorFallback = 40; 
+    private const int ScoreExactTitlePrimaryAuthor = 100;    // 4a: exact/normalized title + primary author (strongest)
+    private const int ScoreExactTitleContributorAuthor = 80; // 4b: exact/normalized title + contributor-only author
+    private const int ScoreNearTitlePrimaryAuthor = 70;      // 4c: near-match title + primary author (extension of 4c)
+    private const int ScoreNearTitleContributorAuthor = 55;  // 4c: near-match title + contributor author (extension of 4c)
+    private const int ScoreTitleOnly = 50;                   // not in spec: title-only query with no author to match
+    private const int ScoreAuthorFallback = 40;              // 4d: author-only fallback
 
     public async Task<SearchResponse> SearchAsync(string rawQuery)
     {
@@ -201,6 +201,16 @@ public class BookSearchService(
             .Select(doc =>
             {
                 var displayAuthor = doc.AuthorNames.FirstOrDefault() ?? "";
+                var searchedAuthorIsPrimary = TextNormalizer.AuthorNamesMatch(authorName, displayAuthor);
+                var searchedAuthorIsContributor = !searchedAuthorIsPrimary &&
+                    doc.AuthorNames.Any(n => TextNormalizer.AuthorNamesMatch(authorName, n));
+
+                var explanation = searchedAuthorIsPrimary
+                    ? $"Author-only match; top work by {displayAuthor}."
+                    : searchedAuthorIsContributor
+                        ? $"Author-only match; \"{authorName}\" is listed as a contributor on this work (primary author: {displayAuthor})."
+                        : $"Returned for author search of \"{authorName}\"; first listed author is {displayAuthor}.";
+
                 return new BookCandidate
                 {
                     Title = doc.Title,
@@ -211,7 +221,7 @@ public class BookSearchService(
                     CoverImageUrl = doc.CoverId.HasValue
                         ? $"https://covers.openlibrary.org/b/id/{doc.CoverId}-M.jpg"
                         : null,
-                    Explanation = $"Author-only match; top work by {displayAuthor}.",
+                    Explanation = explanation,
                     MatchScore = ScoreAuthorFallback,
                     AllAuthors = doc.AuthorNames,
                     AuthorIsPrimary = false
@@ -300,7 +310,13 @@ public class BookSearchService(
             else if (similarity >= 0.5)
                 parts.Add($"Partial title match ({similarity:P0} token overlap)");
             else
-                parts.Add("Weak title similarity");
+            {
+                var authorNameMatch = allAuthors.FirstOrDefault(a =>
+                    TextNormalizer.TitleSimilarity(a, hypothesis.Title) >= 0.3);
+                parts.Add(authorNameMatch != null
+                    ? $"Query matched author name '{authorNameMatch}' (weak title similarity)"
+                    : "Weak title similarity");
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(hypothesis.Author))

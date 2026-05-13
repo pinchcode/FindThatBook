@@ -7,6 +7,7 @@ export interface QueryHypothesis {
 export interface BookCandidate {
   title: string;
   author: string;
+  allAuthors: string[];
   firstPublishYear: number | null;
   workKey: string;
   workUrl: string;

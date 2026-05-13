@@ -1,6 +1,6 @@
 # Find That Book
 
-A library discovery app: paste a messy, partial, or noisy description of a book and get a ranked list of matches with AI-generated explanations.
+A library discovery app: paste a messy, partial, or noisy description of a book and get a ranked list of matches.
 
 ---
 
@@ -114,12 +114,12 @@ dotnet test FindThatBook.Tests
 4. **Matching hierarchy** scores each candidate:
    | Score | Condition |
    |-------|-----------|
-   | 110 | Exact title + primary author |
-   | 100 | Exact title (no author constraint) |
-   | 80 | Exact title + contributor-listed author |
-   | 70 | Near title + primary author |
-   | 55 | Near title + contributor-listed author |
-   | 40 | Author-only / keyword fallback |
+   | 100 | Exact title + primary author (spec 4a) |
+   | 80 | Exact title + contributor-listed author (spec 4b) |
+   | 70 | Near title + primary author (spec 4c) |
+   | 55 | Near title + contributor-listed author (spec 4c) |
+   | 60/50 | Title-only query, no author to match |
+   | 40 | Author-only / keyword fallback (spec 4d) |
 5. The final `SearchResponse` is returned to the client.
 
 The Gemini call degrades gracefully: if the API is unavailable, query parsing falls back to simple year-stripping heuristics and the rule-based scores from step 4 determine the ranking.
@@ -170,11 +170,12 @@ Work details for all candidates are fetched concurrently with `Task.WhenAll`, ke
     {
       "title": "The Hobbit",
       "author": "J.R.R. Tolkien",
+      "allAuthors": ["J.R.R. Tolkien", "Michael Dixon"],
       "firstPublishYear": 1937,
       "workKey": "/works/OL27448W",
       "workUrl": "https://openlibrary.org/works/OL27448W",
       "coverImageUrl": "https://covers.openlibrary.org/b/id/8406786-M.jpg",
-      "explanation": "Exact title match; Tolkien is primary author; Dixon listed as adaptor."
+      "explanation": "Exact title match; J.R.R. Tolkien is the primary author; Michael Dixon is listed as a contributor."
     }
   ]
 }
@@ -209,13 +210,3 @@ The `IGeminiService` and `IOpenLibraryService` interfaces are mocked, isolating 
 - **Cover images** — derived from `cover_i` in the search result. A `null` cover shows a placeholder icon.
 - **No numeric confidence scores** — scores are used internally for ranking but not exposed in the API response, matching the spec's requirement.
 
----
-
-## Future improvements
-
-- **Response caching** — cache Open Library and Gemini results in `IMemoryCache` to reduce latency on repeated queries.
-- **Streaming** — stream the Gemini explanation as it's generated for a better perceived UX.
-- **Fuzzy phonetic matching** — handle misspellings like `"hemmingway"` using Metaphone or similar.
-- **Author disambiguation** — when multiple authors share a surname, use edition count and popularity signals to choose the right one.
-- **Rate limiting** — add an API-level rate limiter to prevent abuse against Open Library.
-- **Integration tests** — add a test layer that hits the real Open Library API (tagged `[Trait("Category", "Integration")]` so CI can skip them).

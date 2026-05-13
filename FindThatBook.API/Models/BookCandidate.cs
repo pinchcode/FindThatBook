@@ -12,9 +12,10 @@ public class BookCandidate
     public string? CoverImageUrl { get; set; }
     public string Explanation { get; set; } = "";
 
+    public List<string> AllAuthors { get; set; } = [];
+
     // Scoring / intermediate data — excluded from API response
     [JsonIgnore] public int MatchScore { get; set; }
-    [JsonIgnore] public List<string> AllAuthors { get; set; } = [];
     [JsonIgnore] public bool AuthorIsPrimary { get; set; }
     [JsonIgnore] public string NormalizedTitle { get; set; } = "";
 }

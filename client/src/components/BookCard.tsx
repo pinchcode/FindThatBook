@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { BookCandidate } from '../types';
 
 interface Props {
@@ -6,7 +7,9 @@ interface Props {
 }
 
 export function BookCard({ candidate, rank }: Props) {
-  const { title, author, firstPublishYear, workUrl, coverImageUrl, explanation } = candidate;
+  const { title, author, allAuthors, firstPublishYear, workUrl, coverImageUrl, explanation } = candidate;
+  const contributors = allAuthors.filter(a => a !== author);
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <article className="flex gap-4 p-5 rounded-2xl border border-slate-200 dark:border-slate-700
@@ -51,6 +54,21 @@ export function BookCard({ candidate, rank }: Props) {
           {author && firstPublishYear && <span className="text-slate-300 dark:text-slate-600">·</span>}
           {firstPublishYear && <span>{firstPublishYear}</span>}
         </div>
+        {contributors.length > 0 && (
+          <div className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
+            <span className={expanded ? '' : 'line-clamp-2'}>
+              Also: {contributors.join(', ')}
+            </span>
+            {contributors.join(', ').length > 80 && (
+              <button
+                onClick={() => setExpanded(e => !e)}
+                className="ml-1 text-indigo-500 hover:underline focus:outline-none"
+              >
+                {expanded ? 'Show less' : 'Show more'}
+              </button>
+            )}
+          </div>
+        )}
 
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
           {explanation}
