@@ -227,5 +227,6 @@ The `IGeminiService` and `IOpenLibraryService` interfaces are mocked, isolating 
 - **Integration tests** — add a test layer tagged `[Trait("Category", "Integration")]` that hits the real Open Library API in a nightly CI run, catching API contract changes before they reach production.
 - **Author disambiguation** — when multiple authors share a surname, use edition count and work popularity signals from Open Library to rank candidates more accurately.
 - **Streaming explanations** — stream the Gemini response as it generates for a better perceived latency on slow connections.
+- **Keyword-enriched search** — Gemini extracts keywords (e.g. "illustrated", "1937") but the current title search only uses title + author. Passing keywords into the Open Library query would surface specific editions like "Hobbit Deluxe Illustrated Edition" that the generic title search misses.
 - **Rate limiting** — add an ASP.NET Core rate limiter to prevent a single client from exhausting the Gemini free-tier quota or hammering Open Library.
 
