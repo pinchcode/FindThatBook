@@ -21,11 +21,7 @@ public class BookSearchServiceTests
         _gemini.Setup(g => g.ParseQueryAsync(It.IsAny<string>()))
             .ReturnsAsync(new QueryHypothesis { Title = "The Hobbit", Author = "J.R.R. Tolkien" });
 
-        _gemini.Setup(g => g.RerankWithExplanationsAsync(It.IsAny<string>(), It.IsAny<QueryHypothesis>(), It.IsAny<List<BookCandidate>>()))
-            .ReturnsAsync<string, QueryHypothesis, List<BookCandidate>, IGeminiService, List<BookCandidate>>(
-                (_, __, candidates) => candidates);
-
-        _openLibrary.Setup(o => o.SearchAsync(It.IsAny<string>(), It.IsAny<int>()))
+_openLibrary.Setup(o => o.SearchAsync(It.IsAny<string>(), It.IsAny<int>()))
             .ReturnsAsync([
                 new OLDoc
                 {
@@ -65,11 +61,7 @@ public class BookSearchServiceTests
         _gemini.Setup(g => g.ParseQueryAsync(It.IsAny<string>()))
             .ReturnsAsync(new QueryHypothesis { Title = null, Author = "Charles Dickens" });
 
-        _gemini.Setup(g => g.RerankWithExplanationsAsync(It.IsAny<string>(), It.IsAny<QueryHypothesis>(), It.IsAny<List<BookCandidate>>()))
-            .ReturnsAsync<string, QueryHypothesis, List<BookCandidate>, IGeminiService, List<BookCandidate>>(
-                (_, __, candidates) => candidates);
-
-        _openLibrary.Setup(o => o.SearchByAuthorAsync("Charles Dickens", It.IsAny<int>()))
+_openLibrary.Setup(o => o.SearchByAuthorAsync("Charles Dickens", It.IsAny<int>()))
             .ReturnsAsync([
                 new OLDoc
                 {
@@ -94,11 +86,7 @@ public class BookSearchServiceTests
         _gemini.Setup(g => g.ParseQueryAsync(It.IsAny<string>()))
             .ReturnsAsync(new QueryHypothesis { Title = "Dune" });
 
-        _gemini.Setup(g => g.RerankWithExplanationsAsync(It.IsAny<string>(), It.IsAny<QueryHypothesis>(), It.IsAny<List<BookCandidate>>()))
-            .ReturnsAsync<string, QueryHypothesis, List<BookCandidate>, IGeminiService, List<BookCandidate>>(
-                (_, __, candidates) => candidates);
-
-        // Same work key returned twice (simulating duplicate editions in search results)
+// Same work key returned twice (simulating duplicate editions in search results)
         var duplicateDoc = new OLDoc { Key = "/works/OL102749W", Title = "Dune", AuthorNames = ["Frank Herbert"] };
         _openLibrary.Setup(o => o.SearchAsync(It.IsAny<string>(), It.IsAny<int>()))
             .ReturnsAsync([duplicateDoc, duplicateDoc]);
@@ -118,11 +106,7 @@ public class BookSearchServiceTests
         _gemini.Setup(g => g.ParseQueryAsync(It.IsAny<string>()))
             .ReturnsAsync(new QueryHypothesis { Title = "xyzzy not a real book" });
 
-        _gemini.Setup(g => g.RerankWithExplanationsAsync(It.IsAny<string>(), It.IsAny<QueryHypothesis>(), It.IsAny<List<BookCandidate>>()))
-            .ReturnsAsync<string, QueryHypothesis, List<BookCandidate>, IGeminiService, List<BookCandidate>>(
-                (_, __, candidates) => candidates);
-
-        _openLibrary.Setup(o => o.SearchAsync(It.IsAny<string>(), It.IsAny<int>()))
+_openLibrary.Setup(o => o.SearchAsync(It.IsAny<string>(), It.IsAny<int>()))
             .ReturnsAsync([]);
 
         var service = BuildService();
@@ -137,11 +121,7 @@ public class BookSearchServiceTests
         _gemini.Setup(g => g.ParseQueryAsync(It.IsAny<string>()))
             .ReturnsAsync(new QueryHypothesis { Title = "The Hobbit", Author = "Dixon" });
 
-        _gemini.Setup(g => g.RerankWithExplanationsAsync(It.IsAny<string>(), It.IsAny<QueryHypothesis>(), It.IsAny<List<BookCandidate>>()))
-            .ReturnsAsync<string, QueryHypothesis, List<BookCandidate>, IGeminiService, List<BookCandidate>>(
-                (_, __, candidates) => candidates);
-
-        _openLibrary.Setup(o => o.SearchAsync(It.IsAny<string>(), It.IsAny<int>()))
+_openLibrary.Setup(o => o.SearchAsync(It.IsAny<string>(), It.IsAny<int>()))
             .ReturnsAsync([
                 new OLDoc
                 {

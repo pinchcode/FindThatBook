@@ -12,12 +12,12 @@ public class BookSearchService(
     private const int MaxCandidates = 5;
 
     // Scoring tiers (higher = stronger match)
-    private const int ScoreExactTitlePrimaryAuthor = 100;
-    private const int ScoreExactTitleContributorAuthor = 80;
-    private const int ScoreNearTitlePrimaryAuthor = 70;
-    private const int ScoreNearTitleContributorAuthor = 55;
-    private const int ScoreTitleOnly = 50;
-    private const int ScoreAuthorFallback = 40;
+    private const int ScoreExactTitlePrimaryAuthor = 100; 
+    private const int ScoreExactTitleContributorAuthor = 80; 
+    private const int ScoreNearTitlePrimaryAuthor = 70; 
+    private const int ScoreNearTitleContributorAuthor = 55; 
+    private const int ScoreTitleOnly = 50; 
+    private const int ScoreAuthorFallback = 40; 
 
     public async Task<SearchResponse> SearchAsync(string rawQuery)
     {
@@ -277,7 +277,7 @@ public class BookSearchService(
         };
     }
 
-    // --- Explanation (rule-based; Gemini re-ranking overwrites this) ---
+    // --- Explanation ---
 
     private static string BuildExplanation(
         QueryHypothesis hypothesis,

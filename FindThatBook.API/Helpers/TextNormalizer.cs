@@ -14,17 +14,18 @@ public static class TextNormalizer
         if (string.IsNullOrWhiteSpace(text)) return "";
 
         // NFD decompose to separate base chars from diacritics, then strip non-ASCII
+        // PH - NFD decomposition splits a character like é into two separate characters — the base letter e plus a separate accent mark. They're still one character visually but now two in memory.
         var normalized = text.Normalize(NormalizationForm.FormD);
         var stripped = new StringBuilder();
         foreach (var c in normalized)
         {
             if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
                 stripped.Append(c);
-        }
+        } // PH - Remove those accents!
 
         var result = stripped.ToString().ToLowerInvariant();
-        result = Regex.Replace(result, @"[^\w\s]", " ");
-        result = Regex.Replace(result, @"\s+", " ").Trim();
+        result = Regex.Replace(result, @"[^\w\s]", " "); // PH - Replace punctions with whitespace
+        result = Regex.Replace(result, @"\s+", " ").Trim(); // PH - remove multiple whitespaces
         return result;
     }
 
@@ -33,12 +34,12 @@ public static class TextNormalizer
     {
         var aTokens = SignificantTokens(Normalize(a));
         var bTokens = SignificantTokens(Normalize(b));
-        if (aTokens.Count == 0 && bTokens.Count == 0) return 1.0;
+        if (aTokens.Count == 0 && bTokens.Count == 0) return 1.0; // PH - Unlikely edge case.  Let AI get away with this..could be 0.0
         if (aTokens.Count == 0 || bTokens.Count == 0) return 0.0;
 
         var intersection = aTokens.Intersect(bTokens).Count();
         var union = aTokens.Union(bTokens).Count();
-        return (double)intersection / union;
+        return (double)intersection / union; // PH - returns the accuracy ... whats common / the full union
     }
 
     // True if one title contains all tokens of the other (handles subtitle variants)
@@ -49,7 +50,7 @@ public static class TextNormalizer
         if (aTokens.Count == 0 || bTokens.Count == 0) return false;
 
         // Shorter set must be fully contained in the longer
-        var shorter = aTokens.Count <= bTokens.Count ? aTokens : bTokens;
+        var shorter = aTokens.Count <= bTokens.Count ? aTokens : bTokens;  // PH - Which is shorter which is longer, then see the overlap
         var longer = aTokens.Count <= bTokens.Count ? bTokens : aTokens;
         return shorter.IsSubsetOf(longer);
     }
@@ -69,7 +70,7 @@ public static class TextNormalizer
         return shorter.Count > 0 && shorter.IsSubsetOf(longer);
     }
 
-    private static HashSet<string> SignificantTokens(string normalizedText)
+    private static HashSet<string> SignificantTokens(string normalizedText) // PH - Just need keys..no values
     {
         return normalizedText
             .Split(' ', StringSplitOptions.RemoveEmptyEntries)
