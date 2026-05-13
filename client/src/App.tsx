@@ -87,6 +87,9 @@ export default function App() {
           )}
         </div>
       </div>
+      <footer className="text-center text-xs text-slate-400 dark:text-slate-600 py-6">
+        Created by Paul Harr using Visual Studio Code with Claude Code
+      </footer>
     </div>
   );
 }
