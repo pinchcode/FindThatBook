@@ -210,3 +210,15 @@ The `IGeminiService` and `IOpenLibraryService` interfaces are mocked, isolating 
 - **Cover images** — derived from `cover_i` in the search result. A `null` cover shows a placeholder icon.
 - **No numeric confidence scores** — scores are used internally for ranking but not exposed in the API response, matching the spec's requirement.
 
+---
+
+## Future improvements
+
+- **Response caching** — cache Open Library results in `IMemoryCache` with a short TTL to reduce latency on repeated queries and ease pressure on the Open Library API.
+- **Smarter fallback parsing** — the current heuristic fallback (when Gemini is unavailable) only strips years. A lightweight local NLP approach (e.g. capitalisation patterns, known stop-word filtering) could improve author vs. title detection without an API call.
+- **Phonetic / fuzzy matching** — handle misspellings like `"hemmingway"` that Gemini corrects but the fallback path misses, using Soundex or Metaphone.
+- **Integration tests** — add a test layer tagged `[Trait("Category", "Integration")]` that hits the real Open Library API in a nightly CI run, catching API contract changes before they reach production.
+- **Author disambiguation** — when multiple authors share a surname, use edition count and work popularity signals from Open Library to rank candidates more accurately.
+- **Streaming explanations** — stream the Gemini response as it generates for a better perceived latency on slow connections.
+- **Rate limiting** — add an ASP.NET Core rate limiter to prevent a single client from exhausting the Gemini free-tier quota or hammering Open Library.
+
