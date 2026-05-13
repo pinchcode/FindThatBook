@@ -1,0 +1,20 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+FindThatBook.API/wwwroot/
+
+# Secrets — never commit these
+appsettings.Development.json
+appsettings.*.json
+!appsettings.json
+
+# Node / frontend
+client/node_modules/
+client/dist/
+
+# OS
+.DS_Store
+Thumbs.db

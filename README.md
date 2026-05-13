@@ -1,0 +1,223 @@
+# Find That Book
+
+A library discovery app: paste a messy, partial, or noisy description of a book and get a ranked list of matches with AI-generated explanations.
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+| Tool | Version |
+|------|---------|
+| .NET | 10.0 |
+| Node.js | 18+ |
+| npm | 9+ |
+
+### 1. Clone and set your Gemini API key
+
+Get a free key at <https://ai.google.dev/gemini-api/docs/api-key>.
+
+**Option A — environment variable (recommended):**
+```bash
+# Windows PowerShell
+$env:Gemini__ApiKey = "YOUR_KEY_HERE"
+
+# macOS/Linux
+export Gemini__ApiKey="YOUR_KEY_HERE"
+```
+
+**Option B — `appsettings.Development.json`:**
+```json
+{
+  "Gemini": {
+    "ApiKey": "YOUR_KEY_HERE"
+  }
+}
+```
+
+> Never commit a real key. The `appsettings.Development.json` file is in `.gitignore`.
+
+### 2. Run the API
+
+```bash
+cd FindThatBook.API
+dotnet run
+```
+
+The API starts on `https://localhost:7001` (or the port shown in the console).
+
+### 3. Run the frontend (development)
+
+In a second terminal:
+
+```bash
+cd client
+npm install
+npm run dev
+```
+
+Open <http://localhost:5173> in your browser. The Vite dev server proxies `/api` requests to the .NET backend automatically.
+
+### Build for production
+
+```bash
+cd client && npm run build   # outputs to FindThatBook.API/wwwroot
+cd ..
+dotnet run --project FindThatBook.API --configuration Release
+```
+
+The .NET host then serves both the API and the React SPA.
+
+### Run the tests
+
+```bash
+dotnet test FindThatBook.Tests
+```
+
+---
+
+## Architecture overview
+
+```
+┌──────────────────────────────────────┐
+│  React + TypeScript (Vite)           │
+│  SearchBox → BookCard                │
+│  POST /api/books/search              │
+└──────────────────────┬───────────────┘
+                       │ HTTP
+┌──────────────────────▼───────────────┐
+│  .NET 10 Web API                     │
+│                                      │
+│  BooksController                     │
+│       │                              │
+│  BookSearchService  ←─── orchestrates│
+│    ├── GeminiService                 │
+│    │     • ParseQueryAsync           │
+│    │     • RerankWithExplanationsAsync│
+│    └── OpenLibraryService            │
+│          • SearchAsync               │
+│          • GetWorkAsync              │
+│          • GetAuthorAsync            │
+│                                      │
+│  TextNormalizer (static helpers)     │
+└──────────────────────────────────────┘
+```
+
+### Request flow
+
+1. **User submits a messy query** (e.g. `"tolkien hobbit illustrated deluxe 1937"`)
+2. **`GeminiService.ParseQueryAsync`** calls Gemini 1.5 Flash to extract a structured hypothesis: `{ title: "The Hobbit", author: "J.R.R. Tolkien", keywords: ["illustrated", "1937"] }`
+3. **`BookSearchService`** chooses a search path:
+   - *Title known* → searches Open Library by title + author, fetches `/works/{id}.json` for each result to resolve canonical (primary) authors
+   - *Author only* → uses Open Library's author-scoped search, returns top works by edition count
+   - *Keywords only* → falls back to raw keyword search
+4. **Matching hierarchy** scores each candidate:
+   | Score | Condition |
+   |-------|-----------|
+   | 110 | Exact title + primary author |
+   | 100 | Exact title (no author constraint) |
+   | 80 | Exact title + contributor-listed author |
+   | 70 | Near title + primary author |
+   | 55 | Near title + contributor-listed author |
+   | 40 | Author-only / keyword fallback |
+5. **`GeminiService.RerankWithExplanationsAsync`** sends the top 5 candidates back to Gemini, asking it to re-rank and write a concrete 1–2 sentence explanation grounded in the matched fields.
+6. The final `SearchResponse` is returned to the client.
+
+Both Gemini calls degrade gracefully: if the API is unavailable, query parsing falls back to simple year-stripping heuristics, and re-ranking is skipped (rule-based explanations from step 4 are used instead).
+
+---
+
+## Design decisions
+
+### AI model choice: Gemini 1.5 Flash
+Free tier, fast, supports `responseMimeType: "application/json"` which guarantees JSON output and eliminates a whole class of parsing errors.
+
+### Two-stage AI usage
+A single Gemini call could do everything, but splitting into parse → score → explain gives deterministic, auditable scoring. The rule-based matching hierarchy is easy to test without mocking the LLM, and the Gemini re-ranking only needs to make a judgement call on the top 5 already-filtered candidates.
+
+### Primary author resolution
+Open Library's `/search.json` `author_name` field includes everyone listed on editions: illustrators, adaptors, editors. The canonical work record at `/works/{id}.json` lists only the primary author(s). The service fetches both and distinguishes between them explicitly, matching the spec's data quality requirement.
+
+### `TextNormalizer` — Jaccard similarity
+Title comparison uses token-level Jaccard similarity over "significant" tokens (stop words removed). This handles:
+- Subtitle variants (`"The Hobbit"` vs `"The Hobbit, or There and Back Again"`) via `TitlesOverlap`
+- Diacritics (`"Héros"` → `"heros"`)
+- Punctuation noise
+
+### Concurrent Open Library fetches
+Work details for all candidates are fetched concurrently with `Task.WhenAll`, keeping total latency proportional to the slowest single request rather than the sum.
+
+---
+
+## API
+
+### `POST /api/books/search`
+
+**Request:**
+```json
+{ "query": "tolkien hobbit illustrated deluxe 1937" }
+```
+
+**Response:**
+```json
+{
+  "originalQuery": "tolkien hobbit illustrated deluxe 1937",
+  "parsedQuery": {
+    "title": "The Hobbit",
+    "author": "J.R.R. Tolkien",
+    "keywords": ["illustrated", "1937"]
+  },
+  "candidates": [
+    {
+      "title": "The Hobbit",
+      "author": "J.R.R. Tolkien",
+      "firstPublishYear": 1937,
+      "workKey": "/works/OL27448W",
+      "workUrl": "https://openlibrary.org/works/OL27448W",
+      "coverImageUrl": "https://covers.openlibrary.org/b/id/8406786-M.jpg",
+      "explanation": "Exact title match; Tolkien is primary author; Dixon listed as adaptor."
+    }
+  ]
+}
+```
+
+Swagger UI is available at `/swagger` in development.
+
+---
+
+## Testing strategy
+
+Tests live in `FindThatBook.Tests` (xUnit + Moq + FluentAssertions).
+
+The `IGeminiService` and `IOpenLibraryService` interfaces are mocked, isolating the core matching and scoring logic in `BookSearchService` from network dependencies. This lets the tests run fast, deterministically, and without API keys.
+
+**Test coverage:**
+| Scenario | Test |
+|----------|------|
+| Exact title + primary author → top score | `SearchAsync_ExactTitleAndPrimaryAuthor_ReturnsSingleTopCandidate` |
+| Author-only query → author fallback path | `SearchAsync_AuthorOnlyQuery_UsesAuthorFallback` |
+| Duplicate work keys from OL → collapsed | `SearchAsync_DeduplicatesWorksByKey` |
+| No OL results → empty candidate list | `SearchAsync_EmptyResults_ReturnsEmptyCandidates` |
+| Contributor author → lower score than primary | `SearchAsync_ContributorAuthorMatch_ScoresLowerThanPrimary` |
+| `TextNormalizer` — normalize, similarity, overlap, author match | `TextNormalizerTests` (9 inline-data cases) |
+
+---
+
+## Assumptions & trade-offs
+
+- **Gemini key required** — there is a heuristic fallback for query parsing but explanations will be weaker without it.
+- **Open Library rate limits** — the service makes up to 15 search + 15 work detail + N author detail requests per query. Open Library is generally permissive for low-volume use; a production version would add caching (e.g. IMemoryCache with a short TTL).
+- **Cover images** — derived from `cover_i` in the search result. A `null` cover shows a placeholder icon.
+- **No numeric confidence scores** — scores are used internally for ranking but not exposed in the API response, matching the spec's requirement.
+
+---
+
+## Future improvements
+
+- **Response caching** — cache Open Library and Gemini results in `IMemoryCache` to reduce latency on repeated queries.
+- **Streaming** — stream the Gemini explanation as it's generated for a better perceived UX.
+- **Fuzzy phonetic matching** — handle misspellings like `"hemmingway"` using Metaphone or similar.
+- **Author disambiguation** — when multiple authors share a surname, use edition count and popularity signals to choose the right one.
+- **Rate limiting** — add an API-level rate limiter to prevent abuse against Open Library.
+- **Integration tests** — add a test layer that hits the real Open Library API (tagged `[Trait("Category", "Integration")]` so CI can skip them).
