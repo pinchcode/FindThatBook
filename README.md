@@ -111,15 +111,21 @@ dotnet test FindThatBook.Tests
    - *Title known* → searches Open Library by title + author, fetches `/works/{id}.json` for each result to resolve canonical (primary) authors
    - *Author only* → uses Open Library's author-scoped search, returns top works by edition count
    - *Keywords only* → falls back to raw keyword search
-4. **Matching hierarchy** scores each candidate:
-   | Score | Condition |
-   |-------|-----------|
-   | 100 | Exact title + primary author (spec 4a) |
-   | 80 | Exact title + contributor-listed author (spec 4b) |
-   | 70 | Near title + primary author (spec 4c) |
-   | 55 | Near title + contributor-listed author (spec 4c) |
-   | 60/50 | Title-only query, no author to match |
-   | 40 | Author-only / keyword fallback (spec 4d) |
+4. **Matching hierarchy** scores each candidate. The spec defines four tiers (4a–4d); the implementation extends spec 4c into two sub-tiers to maintain consistency with how 4a/4b distinguish primary vs contributor authors:
+   | Score | Condition | Spec |
+   |-------|-----------|------|
+   | 100 | Exact/normalised title + primary author | 4a |
+   | 80 | Exact/normalised title + contributor-only author | 4b |
+   | 70 | Near-match title + primary author | 4c (primary variant) |
+   | 55 | Near-match title + contributor author | 4c (contributor variant) |
+   | 60/50 | Title-only query — no author in query to match against | extension |
+   | 40 | Author-only or keyword fallback | 4d |
+
+   **Title matching** uses token-level Jaccard similarity via `TextNormalizer`: diacritics stripped, punctuation removed, stop words excluded. `TitlesOverlap` handles subtitle variants (e.g. "The Hobbit" matches "The Hobbit, or There and Back Again"). Similarity ≥ 0.5 qualifies as a near-match.
+
+   **Author matching** distinguishes primary from contributor by comparing the query author against `/works/{id}.json` canonical authors (primary) vs the full `author_name[]` list from `/search.json` (which includes illustrators, editors, adaptors).
+
+   Candidates are sorted descending by score; top 5 are returned (spec 4e).
 5. The final `SearchResponse` is returned to the client.
 
 The Gemini call degrades gracefully: if the API is unavailable, query parsing falls back to simple year-stripping heuristics and the rule-based scores from step 4 determine the ranking.
