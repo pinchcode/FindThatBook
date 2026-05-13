@@ -10,7 +10,7 @@ A library discovery app: paste a messy, partial, or noisy description of a book 
 
 | Tool | Version |
 |------|---------|
-| .NET | 10.0 |
+| .NET | 8.0 |
 | Node.js | 18+ |
 | npm | 9+ |
 
@@ -87,14 +87,13 @@ dotnet test FindThatBook.Tests
 └──────────────────────┬───────────────┘
                        │ HTTP
 ┌──────────────────────▼───────────────┐
-│  .NET 10 Web API                     │
+│  .NET 8 Web API                      │
 │                                      │
 │  BooksController                     │
 │       │                              │
 │  BookSearchService  ←─── orchestrates│
 │    ├── GeminiService                 │
 │    │     • ParseQueryAsync           │
-│    │     • RerankWithExplanationsAsync│
 │    └── OpenLibraryService            │
 │          • SearchAsync               │
 │          • GetWorkAsync              │
@@ -107,7 +106,7 @@ dotnet test FindThatBook.Tests
 ### Request flow
 
 1. **User submits a messy query** (e.g. `"tolkien hobbit illustrated deluxe 1937"`)
-2. **`GeminiService.ParseQueryAsync`** calls Gemini 1.5 Flash to extract a structured hypothesis: `{ title: "The Hobbit", author: "J.R.R. Tolkien", keywords: ["illustrated", "1937"] }`
+2. **`GeminiService.ParseQueryAsync`** calls Gemini 2.5 Flash to extract a structured hypothesis: `{ title: "The Hobbit", author: "J.R.R. Tolkien", keywords: ["illustrated", "1937"] }`
 3. **`BookSearchService`** chooses a search path:
    - *Title known* → searches Open Library by title + author, fetches `/works/{id}.json` for each result to resolve canonical (primary) authors
    - *Author only* → uses Open Library's author-scoped search, returns top works by edition count
@@ -121,20 +120,19 @@ dotnet test FindThatBook.Tests
    | 70 | Near title + primary author |
    | 55 | Near title + contributor-listed author |
    | 40 | Author-only / keyword fallback |
-5. **`GeminiService.RerankWithExplanationsAsync`** sends the top 5 candidates back to Gemini, asking it to re-rank and write a concrete 1–2 sentence explanation grounded in the matched fields.
-6. The final `SearchResponse` is returned to the client.
+5. The final `SearchResponse` is returned to the client.
 
-Both Gemini calls degrade gracefully: if the API is unavailable, query parsing falls back to simple year-stripping heuristics, and re-ranking is skipped (rule-based explanations from step 4 are used instead).
+The Gemini call degrades gracefully: if the API is unavailable, query parsing falls back to simple year-stripping heuristics and the rule-based scores from step 4 determine the ranking.
 
 ---
 
 ## Design decisions
 
-### AI model choice: Gemini 1.5 Flash
+### AI model choice: Gemini 2.5 Flash
 Free tier, fast, supports `responseMimeType: "application/json"` which guarantees JSON output and eliminates a whole class of parsing errors.
 
-### Two-stage AI usage
-A single Gemini call could do everything, but splitting into parse → score → explain gives deterministic, auditable scoring. The rule-based matching hierarchy is easy to test without mocking the LLM, and the Gemini re-ranking only needs to make a judgement call on the top 5 already-filtered candidates.
+### Single AI call per search
+Gemini is used once per query — to parse and spell-correct the raw input into a structured hypothesis. Ranking is handled entirely by the deterministic rule-based hierarchy, which is easy to test without mocking the LLM and produces auditable, consistent results.
 
 ### Primary author resolution
 Open Library's `/search.json` `author_name` field includes everyone listed on editions: illustrators, adaptors, editors. The canonical work record at `/works/{id}.json` lists only the primary author(s). The service fetches both and distinguishes between them explicitly, matching the spec's data quality requirement.
