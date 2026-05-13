@@ -26,7 +26,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.x'
+          dotnet-version: '8.x'
 
       - name: Publish .NET API
         run: dotnet publish FindThatBook.API/FindThatBook.API.csproj -c Release -o ./publish

@@ -18,9 +18,6 @@ public class OLWorkAuthorEntry
 {
     [JsonPropertyName("author")]
     public OLKeyRef? Author { get; set; }
-
-    [JsonPropertyName("type")]
-    public OLKeyRef? Type { get; set; }
 }
 
 public class OLKeyRef
