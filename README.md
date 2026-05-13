@@ -118,7 +118,8 @@ dotnet test FindThatBook.Tests
    | 80 | Exact/normalised title + contributor-only author | 4b |
    | 70 | Near-match title + primary author | 4c (primary variant) |
    | 55 | Near-match title + contributor author | 4c (contributor variant) |
-   | 60/50 | Title-only query — no author in query to match against | extension |
+   | 60 | Exact title match, no author in query — spec doesn't cover this case; ranks above keyword fallback but below any author-confirmed result | extension |
+   | 50 | Near title match, no author in query — same reasoning | extension |
    | 40 | Author-only or keyword fallback | 4d |
 
    **Title matching** uses token-level Jaccard similarity via `TextNormalizer`: diacritics stripped, punctuation removed, stop words excluded. `TitlesOverlap` handles subtitle variants (e.g. "The Hobbit" matches "The Hobbit, or There and Back Again"). Similarity ≥ 0.5 qualifies as a near-match.

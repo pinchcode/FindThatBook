@@ -29,7 +29,7 @@ export function SearchBox({ onSearch, isLoading }: Props) {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="e.g. tolkien hobbit illustrated deluxe 1937"
           disabled={isLoading}
-          className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700
+          className="flex-1 min-w-0 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700
                      bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100
                      placeholder:text-slate-400 focus:outline-none focus:ring-2
                      focus:ring-indigo-500 focus:border-transparent text-base
@@ -38,7 +38,7 @@ export function SearchBox({ onSearch, isLoading }: Props) {
         <button
           type="submit"
           disabled={isLoading || !query.trim()}
-          className="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800
+          className="shrink-0 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800
                      text-white font-medium text-base transition-colors disabled:opacity-50
                      disabled:cursor-not-allowed shadow-sm"
         >

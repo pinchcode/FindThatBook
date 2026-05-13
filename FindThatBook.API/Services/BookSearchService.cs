@@ -16,7 +16,8 @@ public class BookSearchService(
     private const int ScoreExactTitleContributorAuthor = 80; // 4b: exact/normalized title + contributor-only author
     private const int ScoreNearTitlePrimaryAuthor = 70;      // 4c: near-match title + primary author (extension of 4c)
     private const int ScoreNearTitleContributorAuthor = 55;  // 4c: near-match title + contributor author (extension of 4c)
-    private const int ScoreTitleOnly = 50;                   // not in spec: title-only query with no author to match
+    private const int ScoreExactTitleOnly = 60;              // not in spec: exact title match, no author in query
+    private const int ScoreTitleOnly = 50;                   // not in spec: near title match, no author in query
     private const int ScoreAuthorFallback = 40;              // 4d: author-only fallback
 
     public async Task<SearchResponse> SearchAsync(string rawQuery)
@@ -273,7 +274,7 @@ public class BookSearchService(
 
         if (string.IsNullOrWhiteSpace(hypothesis.Author))
         {
-            return exactTitle ? ScoreTitleOnly + 10 : nearTitle ? ScoreTitleOnly : ScoreAuthorFallback;
+            return exactTitle ? ScoreExactTitleOnly : nearTitle ? ScoreTitleOnly : ScoreAuthorFallback;
         }
 
         return (exactTitle, nearTitle, authorIsPrimary, authorMatch) switch
