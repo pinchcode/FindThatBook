@@ -53,6 +53,7 @@ _openLibrary.Setup(o => o.SearchAsync(It.IsAny<string>(), It.IsAny<int>()))
         result.Candidates[0].Author.Should().Be("J.R.R. Tolkien");
         result.Candidates[0].FirstPublishYear.Should().Be(1937);
         result.Candidates[0].AuthorIsPrimary.Should().BeTrue();
+        result.Candidates[0].MatchScore.Should().Be(100, "exact title + primary author is spec 4a, the strongest tier");
     }
 
     [Fact]
@@ -150,5 +151,62 @@ _openLibrary.Setup(o => o.SearchAsync(It.IsAny<string>(), It.IsAny<int>()))
 
         result.Candidates.Should().HaveCount(1);
         result.Candidates[0].AuthorIsPrimary.Should().BeFalse("Dixon is a contributor, not the primary author");
+        result.Candidates[0].MatchScore.Should().Be(80, "exact title + contributor author is spec 4b, lower than 4a");
+    }
+
+    [Fact]
+    public async Task SearchAsync_PrimaryAuthorRanksAboveContributor()
+    {
+        _gemini.Setup(g => g.ParseQueryAsync(It.IsAny<string>()))
+            .ReturnsAsync(new QueryHypothesis { Title = "The Hobbit", Author = "Tolkien" });
+
+        _openLibrary.Setup(o => o.SearchAsync(It.IsAny<string>(), It.IsAny<int>()))
+            .ReturnsAsync([
+                new OLDoc
+                {
+                    Key = "/works/OL27448W",
+                    Title = "The Hobbit",
+                    AuthorNames = ["J.R.R. Tolkien", "Michael Dixon"],
+                    AuthorKeys = ["/authors/OL26320A"],
+                    FirstPublishYear = 1937
+                },
+                new OLDoc
+                {
+                    Key = "/works/OL99999W",
+                    Title = "The Hobbit",
+                    AuthorNames = ["Michael Dixon", "J.R.R. Tolkien"],
+                    AuthorKeys = ["/authors/OL99999A"],
+                    FirstPublishYear = 1990
+                }
+            ]);
+
+        _openLibrary.Setup(o => o.GetWorkAsync("/works/OL27448W"))
+            .ReturnsAsync(new OLWorkDetail
+            {
+                Key = "/works/OL27448W",
+                Authors = [new OLWorkAuthorEntry { Author = new OLKeyRef { Key = "/authors/OL26320A" } }]
+            });
+
+        _openLibrary.Setup(o => o.GetWorkAsync("/works/OL99999W"))
+            .ReturnsAsync(new OLWorkDetail
+            {
+                Key = "/works/OL99999W",
+                Authors = [new OLWorkAuthorEntry { Author = new OLKeyRef { Key = "/authors/OL99999A" } }]
+            });
+
+        _openLibrary.Setup(o => o.GetAuthorAsync("/authors/OL26320A"))
+            .ReturnsAsync(new OLAuthorDetail { Key = "/authors/OL26320A", Name = "J.R.R. Tolkien" });
+
+        _openLibrary.Setup(o => o.GetAuthorAsync("/authors/OL99999A"))
+            .ReturnsAsync(new OLAuthorDetail { Key = "/authors/OL99999A", Name = "Michael Dixon" });
+
+        var service = BuildService();
+        var result = await service.SearchAsync("hobbit tolkien");
+
+        result.Candidates.Should().HaveCountGreaterThan(1);
+        result.Candidates[0].MatchScore.Should().Be(100, "Tolkien is primary author — spec 4a");
+        result.Candidates[1].MatchScore.Should().Be(80, "Tolkien is contributor on second edition — spec 4b");
+        result.Candidates[0].MatchScore.Should().BeGreaterThan(result.Candidates[1].MatchScore,
+            "primary author match must rank above contributor match");
     }
 }
